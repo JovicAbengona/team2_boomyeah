@@ -6,8 +6,8 @@
         # Triggered by: (POST) docs/duplicate
         # Requires: $documentationd_id
         # Returns: { status: true/false, result: documentation record (Array), error: null }
-        # Last updated at: March 24, 2023
-        # Owner: Jovic
+        # Last updated at: April 20, 2023
+        # Owner: Jovic, Updated by: Jovic
         public function getDocumentation($documentation_id){
             $response_data = array("status" => false, "result" => array(), "error" => null);
 
@@ -17,13 +17,19 @@
                 if($get_documentation->num_rows()){
                     $get_documentation = $get_documentation->result_array()[FIRST_INDEX];
 
-                    # Check if User has access to Documentation
-                    if($_SESSION["user_level_id"] == USER_LEVEL["USER"] && $get_documentation["is_private"] == TRUE_VALUE){
-                        $this->load->model("Collaborator");
-                        $get_collaborator = $this->Collaborator->getCollaborator(array($_SESSION["user_id"], $documentation_id));
-    
-                        if(!$get_collaborator["status"]){
-                            throw new Exception($get_collaborator["error"]);
+                    if($_SESSION["user_level_id"] == USER_LEVEL["USER"]){
+                        # Check if User is trying to access an Archived Documentation
+                        if($get_documentation["is_archived"] == TRUE_VALUE){
+                            throw new Exception("User can't access an archived Documentation");
+                        }
+                        # Check if User has access to Documentation
+                        else if($get_documentation["is_private"] == TRUE_VALUE){
+                            $this->load->model("Collaborator");
+                            $get_collaborator = $this->Collaborator->getCollaborator(array($_SESSION["user_id"], $documentation_id));
+        
+                            if(!$get_collaborator["status"]){
+                                throw new Exception($get_collaborator["error"]);
+                            }
                         }
                     }
 
