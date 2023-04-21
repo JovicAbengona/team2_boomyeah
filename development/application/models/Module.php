@@ -250,8 +250,9 @@
     
                     
                     if($this->db->affected_rows()){
+                        # TODO: Commment for now. Return depending on MC's comment
                         # Update sections record
-                        $update_section = $this->updateSection($params["section_id"]);
+                        // $update_section = $this->updateSection($params["section_id"]);
 
                         if($update_section["status"]){
                             # Check if module_content has files or images
@@ -470,8 +471,9 @@
                     $update_module_tab_ids_order = $this->db->query("UPDATE modules SET tab_ids_order = ?, updated_at = NOW() WHERE id = ?;", array($params["tab_ids_order"], $params["module_id"]));
     
                     if($this->db->affected_rows()){
+                        # TODO: Comment for now. Return depending on MC's comment.
                         # Update sections record
-                        $update_section = $this->updateSection($params["section_id"]);
+                        // $update_section = $this->updateSection($params["section_id"]);
 
                         if($update_section["status"]){
                             $response_data["status"] = true;
