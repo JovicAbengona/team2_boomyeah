@@ -217,8 +217,8 @@
 		# DOCU: This function will call getDocumentation from Documentation Model and render admin_edit_documentation page
 		# Triggered by: (GET) docs/(:any)/edit
 		# Requires: $documentation_id
-		# Last updated at: Mar. 30, 2023
-		# Owner: Jovic
+		# Last updated at: April 20, 2023
+		# Owner: Jovic, Updated by: Jovic
 		public function getDocumentation($documentation_id){
 			$documentation = $this->Documentation->getDocumentation($documentation_id);
 			
@@ -236,16 +236,17 @@
 				$this->load->view('documentations/admin_edit_documentation', array("side_nav_links" => $documentations["result"], "document_data" => $documentation["result"], "sections" => $sections["result"]));
 			}
 			else{
-				# Confirm if we need to show error or just redirect back to dashboard
-				echo "Documentation doesn't exist";
+				$this->session->set_flashdata("flashdata_message", $documentation["error"]);
+
+				redirect("/docs/edit");
 			}
 		}
 
 		# DOCU: This function will call getDocumentation from Documentation Model, getSection and getSectionTabs from Section Model
 		# Triggered by: (GET) docs/(:any)/(:any)/edit
 		# Requires: $documentation_id, $section_id
-		# Last updated at: Mar. 30, 2023
-		# Owner: Jovic
+		# Last updated at: April 20, 2023
+		# Owner: Jovic, Updated by: Jovic
 		public function getSection($documentation_id, $section_id){
 			$documentation = $this->Documentation->getDocumentation($documentation_id);
 			
@@ -273,20 +274,30 @@
 					}
 				}
 				else{
-					echo $section["error"];
+					$this->session->set_flashdata("flashdata_message", $section["error"]);
 				}
 			}
 			else{
-				# Confirm if we need to show error or just redirect back to dashboard
-				echo $documentation["error"];
+				$this->session->set_flashdata("flashdata_message", $documentation["error"]);
+			}
+
+			# Check if flashdata is set
+			if($this->session->flashdata("flashdata_message")){
+				$redirect_url = "/docs/edit";
+				
+				if($section["error"]){
+					$redirect_url = "/docs/{$documentation_id}/edit";
+				}
+	
+				redirect($redirect_url);
 			}
 		}
 
 		# DOCU: This function will call getDocumentation from Documentation Model and render user_view_documentation page
 		# Triggered by: (GET) docs/(:any)
 		# Requires: $documentation_id
-		# Last updated at: Mar. 30, 2023
-		# Owner: Jovic
+		# Last updated at: April 20, 2023
+		# Owner: Jovic, Updated by: Jovic
 		public function userDocumentation($documentation_id){
 			# Check if user is allowed to do action
 			$this->isUserAllowed(false);
@@ -294,23 +305,18 @@
 			$documentation = $this->Documentation->getDocumentation($documentation_id);
 			
 			if($documentation["status"] && $documentation["result"]){
-				if($documentation["result"]["is_archived"] == FALSE_VALUE){
-					# Fetch documentations to be used in side nav
-					$documentations = $this->Documentation->getDocumentations($this->setGetDocumentationsParams());
+				# Fetch documentations to be used in side nav
+				$documentations = $this->Documentation->getDocumentations($this->setGetDocumentationsParams());
 
-					# Fetch sections
-					$this->load->model("Section");
-					$sections = $this->Section->getSections($documentation_id);
-	
-					$this->load->view('documentations/user_view_documentation', array("side_nav_links" => $documentations["result"], "document_data" => $documentation["result"], "sections" => $sections["result"]));
-				}
-				else{
-					redirect("/docs");
-				}
+				# Fetch sections
+				$this->load->model("Section");
+				$sections = $this->Section->getSections($documentation_id);
+
+				$this->load->view('documentations/user_view_documentation', array("side_nav_links" => $documentations["result"], "document_data" => $documentation["result"], "sections" => $sections["result"]));
 			}
 			else{
-				# Confirm if we need to show error or just redirect back to dashboard
-				echo $documentation["error"];
+				$this->session->set_flashdata("flashdata_message", $documentation["error"]);
+				redirect("/docs");
 			}
 		}
 
@@ -323,30 +329,35 @@
 			$documentation = $this->Documentation->getDocumentation($documentation_id);
 			
 			if($documentation["status"] && $documentation["result"]){
-				if($documentation["result"]["is_archived"] == FALSE_VALUE){
-					# Fetch sections to be used in side nav
-					$this->load->model("Section");
-					$sections = $this->Section->getSections($documentation_id);
+				# Fetch sections to be used in side nav
+				$this->load->model("Section");
+				$sections = $this->Section->getSections($documentation_id);
 
-					# Fetch sections
-					$section = $this->Section->getSection(array("section_id" => $section_id, "documentation_id" => $documentation_id));
+				# Fetch sections
+				$section = $this->Section->getSection(array("section_id" => $section_id, "documentation_id" => $documentation_id));
 
-					if($section["status"] && $section["result"]){
-						$modules = $this->Section->getSectionTabs($section_id);
-		
-						$this->load->view('documentations/user_view_section', array("side_nav_links" => $sections["result"], "documentation" => $documentation["result"], "section" => $section["result"], "modules" => $modules["result"]));
-					}
-					else{
-						echo $section["error"];
-					}
+				if($section["status"] && $section["result"]){
+					$modules = $this->Section->getSectionTabs($section_id);
+	
+					$this->load->view('documentations/user_view_section', array("side_nav_links" => $sections["result"], "documentation" => $documentation["result"], "section" => $section["result"], "modules" => $modules["result"]));
 				}
 				else{
-					redirect("/docs");
+					$this->session->set_flashdata("flashdata_message", $section["error"]);
 				}
 			}
 			else{
-				# Confirm if we need to show error or just redirect back to dashboard
-				echo $documentation["error"];
+				$this->session->set_flashdata("flashdata_message", $documentation["error"]);
+			}
+
+			# Check if flashdata is set
+			if($this->session->flashdata("flashdata_message")){
+				$redirect_url = "/docs";
+				
+				if($section["error"]){
+					$redirect_url = "/docs/{$documentation_id}";
+				}
+	
+				redirect($redirect_url);
 			}
 		}
 
