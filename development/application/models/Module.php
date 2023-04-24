@@ -250,93 +250,87 @@
     
                     
                     if($this->db->affected_rows()){
-                        # TODO: Commment for now. Return depending on MC's comment
-                        # Update sections record
-                        // $update_section = $this->updateSection($params["section_id"]);
-
-                        // if($update_section["status"]){
-                            # Check if module_content has files or images
-                            preg_match_all('~(?<=href=").*?(?=")|(?<=src=").*?(?=")~', $params["module_content"], $included_links);
+                        # Check if module_content has files or images
+                        preg_match_all('~(?<=href=").*?(?=")|(?<=src=").*?(?=")~', $params["module_content"], $included_links);
+                        
+                        if(count($included_links[FIRST_INDEX])){
+                            $included_links = array_unique($included_links[FIRST_INDEX]);
                             
-                            if(count($included_links[FIRST_INDEX])){
-                                $included_links = array_unique($included_links[FIRST_INDEX]);
-                                
-                                # Fetch Files whose tab_ids contains $params["tab_id"] 
-                                $get_files = $this->db->query("SELECT JSON_ARRAYAGG(id) AS file_ids, JSON_ARRAYAGG(file_url) AS file_urls, JSON_ARRAYAGG(tab_ids) AS file_tab_ids FROM files WHERE tab_ids REGEXP ?;", "[[:<:]]{$params["tab_id"]}[[:>:]]");
-                                
-                                if($get_files->num_rows()){
-                                    $get_files = $get_files->result_array()[FIRST_INDEX];
+                            # Fetch Files whose tab_ids contains $params["tab_id"] 
+                            $get_files = $this->db->query("SELECT JSON_ARRAYAGG(id) AS file_ids, JSON_ARRAYAGG(file_url) AS file_urls, JSON_ARRAYAGG(tab_ids) AS file_tab_ids FROM files WHERE tab_ids REGEXP ?;", "[[:<:]]{$params["tab_id"]}[[:>:]]");
+                            
+                            if($get_files->num_rows()){
+                                $get_files = $get_files->result_array()[FIRST_INDEX];
+    
+                                # Prepare needed arrays
+                                $file_ids      = json_decode($get_files["file_ids"]);
+                                $file_urls     = json_decode($get_files["file_urls"]);
+                                $file_tab_ids  = json_decode($get_files["file_tab_ids"]);
+                                $values_clause = $bind_params = array();
+    
+                                # Check files to remove
+                                if($file_urls){
+                                    # Check for removed file_urls
+                                    $files_to_remove = array_diff($file_urls, $included_links);
         
-                                    # Prepare needed arrays
-                                    $file_ids      = json_decode($get_files["file_ids"]);
-                                    $file_urls     = json_decode($get_files["file_urls"]);
-                                    $file_tab_ids  = json_decode($get_files["file_tab_ids"]);
-                                    $values_clause = $bind_params = array();
+                                    if($files_to_remove){
+                                        # Prepare query values
+                                        foreach($files_to_remove as $key => $file){
+                                            # Get index of file
+                                            $file_index = array_search($file, $file_urls);
+                                            $tab_ids = explode(",", $file_tab_ids[$file_index]);
         
-                                    # Check files to remove
-                                    if($file_urls){
-                                        # Check for removed file_urls
-                                        $files_to_remove = array_diff($file_urls, $included_links);
-            
-                                        if($files_to_remove){
-                                            # Prepare query values
-                                            foreach($files_to_remove as $key => $file){
-                                                # Get index of file
-                                                $file_index = array_search($file, $file_urls);
-                                                $tab_ids = explode(",", $file_tab_ids[$file_index]);
-            
-                                                # Remove tab_id if it's in File record's tab_ids
-                                                $tab_index = array_search($params["tab_id"], $tab_ids);
-                        
-                                                if($tab_index !== FALSE){
-                                                    unset($tab_ids[$tab_index]);
-                        
-                                                    # Convert array to comma-separated value then update File record
-                                                    $tab_ids = implode(",", $tab_ids);
-                                                    array_push($values_clause, "(?, ?)");
-                                                    array_push($bind_params, $file_ids[$file_index], $tab_ids);
-                                                }
-                                            }
-                                        }
-                                    }
-                                    else{
-                                        # Fetch File records based on links in $included_links
-                                        $get_files_ids = $this->db->query("SELECT id, tab_ids FROM files WHERE file_url IN ?;", array($included_links));
-
-                                        if($get_files_ids->num_rows()){
-                                            $get_files_ids = $get_files_ids->result_array();
-
-                                            # Prepare query values
-                                            foreach($get_files_ids as $file){
-                                                $tabs_ids = $file["tab_ids"] ? "{$file["tab_ids"]},{$params["tab_id"]}" : $params["tab_id"];
-
-                                                array_push($values_clause, "(?, ?)");
-                                                array_push($bind_params, $file["id"], $tabs_ids);
-                                            }
-                                        }
-                                    }
-
-                                    # Update File record/s
-                                    if($values_clause && $bind_params){
-                                        $values_clause = implode(",", $values_clause);
-                                        $update_files = $this->db->query("INSERT INTO files (id, tab_ids) VALUES {$values_clause} ON DUPLICATE KEY UPDATE tab_ids = VALUES(tab_ids)", $bind_params);
+                                            # Remove tab_id if it's in File record's tab_ids
+                                            $tab_index = array_search($params["tab_id"], $tab_ids);
                     
-                                        if(!$update_files){
-                                            throw new Exception("Error updating File records");
+                                            if($tab_index !== FALSE){
+                                                unset($tab_ids[$tab_index]);
+                    
+                                                # Convert array to comma-separated value then update File record
+                                                $tab_ids = implode(",", $tab_ids);
+                                                array_push($values_clause, "(?, ?)");
+                                                array_push($bind_params, $file_ids[$file_index], $tab_ids);
+                                            }
                                         }
                                     }
                                 }
+                                else{
+                                    # Fetch File records based on links in $included_links
+                                    $get_files_ids = $this->db->query("SELECT id, tab_ids FROM files WHERE file_url IN ?;", array($included_links));
+
+                                    if($get_files_ids->num_rows()){
+                                        $get_files_ids = $get_files_ids->result_array();
+
+                                        # Prepare query values
+                                        foreach($get_files_ids as $file){
+                                            $tabs_ids = $file["tab_ids"] ? "{$file["tab_ids"]},{$params["tab_id"]}" : $params["tab_id"];
+
+                                            array_push($values_clause, "(?, ?)");
+                                            array_push($bind_params, $file["id"], $tabs_ids);
+                                        }
+                                    }
+                                }
+
+                                # Update File record/s
+                                if($values_clause && $bind_params){
+                                    $values_clause = implode(",", $values_clause);
+                                    $update_files = $this->db->query("INSERT INTO files (id, tab_ids) VALUES {$values_clause} ON DUPLICATE KEY UPDATE tab_ids = VALUES(tab_ids)", $bind_params);
+                
+                                    if(!$update_files){
+                                        throw new Exception("Error updating File records");
+                                    }
+                                }
                             }
-                            else{
-                                # Delete tab_id from File records' tab_ids
-                                $remove_file_tab_id = $this->removeFileTabId($params["tab_id"]);
-                            }
-        
-                            # Commit changes to DB
-                            $this->db->trans_complete();
-                            
-                            $response_data["status"] = true;
-                        // }
+                        }
+                        else{
+                            # Delete tab_id from File records' tab_ids
+                            $remove_file_tab_id = $this->removeFileTabId($params["tab_id"]);
+                        }
+    
+                        # Commit changes to DB
+                        $this->db->trans_complete();
+                        
+                        $response_data["status"] = true;
                     }
                 }
             }
@@ -471,13 +465,7 @@
                     $update_module_tab_ids_order = $this->db->query("UPDATE modules SET tab_ids_order = ?, updated_at = NOW() WHERE id = ?;", array($params["tab_ids_order"], $params["module_id"]));
     
                     if($this->db->affected_rows()){
-                        # TODO: Comment for now. Return depending on MC's comment.
-                        # Update sections record
-                        // $update_section = $this->updateSection($params["section_id"]);
-
-                        // if($update_section["status"]){
-                            $response_data["status"] = true;
-                        // }
+                        $response_data["status"] = true;
                     }
                     else{
                         throw new Exception("Unable to update order of the tabs.");
