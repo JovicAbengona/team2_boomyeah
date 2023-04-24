@@ -235,7 +235,7 @@
         # Triggered by: (POST) module/update
         # Requires: $params {action, module_title, module_content, is_comments_allowed, tab_id }, $_SESSION["user_id"]
         # Returns: { status: true/false, result: {}, error: null }
-        # Last updated at: April 17, 2023
+        # Last updated at: April 24, 2023
         # Owner: Jovic, Updated by: Jovic
         public function updateModule($params){
             $response_data = array("status" => false, "result" => array(), "error" => null);
@@ -254,7 +254,7 @@
                         # Update sections record
                         // $update_section = $this->updateSection($params["section_id"]);
 
-                        if($update_section["status"]){
+                        // if($update_section["status"]){
                             # Check if module_content has files or images
                             preg_match_all('~(?<=href=").*?(?=")|(?<=src=").*?(?=")~', $params["module_content"], $included_links);
                             
@@ -336,7 +336,7 @@
                             $this->db->trans_complete();
                             
                             $response_data["status"] = true;
-                        }
+                        // }
                     }
                 }
             }
@@ -460,7 +460,7 @@
         # Triggered by: (POST) module/reorder_tab
         # Requires: $params { module_id, tab_ids_order }
         # Returns: { status: true/false, result: { tab_id }, error: null }
-        # Last updated at: April 17, 2023
+        # Last updated at: April 24, 2023
         # Owner: Erick, Updated by: Jovic
         public function reorderTab($params){
             $response_data = array("status" => false, "result" => array(), "error" => null);
@@ -475,9 +475,9 @@
                         # Update sections record
                         // $update_section = $this->updateSection($params["section_id"]);
 
-                        if($update_section["status"]){
+                        // if($update_section["status"]){
                             $response_data["status"] = true;
-                        }
+                        // }
                     }
                     else{
                         throw new Exception("Unable to update order of the tabs.");
