@@ -235,7 +235,7 @@
         # Triggered by: (POST) module/update
         # Requires: $params {action, module_title, module_content, is_comments_allowed, tab_id }, $_SESSION["user_id"]
         # Returns: { status: true/false, result: {}, error: null }
-        # Last updated at: April 24, 2023
+        # Last updated at: April 25, 2023
         # Owner: Jovic, Updated by: Jovic
         public function updateModule($params){
             $response_data = array("status" => false, "result" => array(), "error" => null);
@@ -245,17 +245,27 @@
                 if($_SESSION["user_level_id"] == USER_LEVEL["ADMIN"]){
                     # Start DB transaction
                     $this->db->trans_start();
+
+                    # Check if module_content has files or images
+                    preg_match_all('~(?<=href=").*?(?=")|(?<=src=").*?(?=")~', $params["module_content"], $included_links);
+
+                    if(count($included_links[FIRST_INDEX])){
+                        $included_links = array_unique($included_links[FIRST_INDEX]);
+
+                        # Check for links with missing http:// or https://
+                        foreach($included_links as $key => $link){
+                            if((strpos($link, "http://") === FALSE) && (strpos($link, "https://") === FALSE)){
+                                $params["module_content"] = str_replace($link, "http://{$link}", $params["module_content"]);
+                            }
+                        }
+                    }
+
+                    # Update tab record
                     $update_tab = $this->db->query("UPDATE tabs SET title = ?, content = ?, is_comments_allowed = ?, updated_by_user_id = ?, updated_at = NOW() WHERE id = ?;", 
                     array($params["module_title"], $params["module_content"], $params["is_comments_allowed"], $_SESSION["user_id"], $params["tab_id"]));
     
-                    
-                    if($this->db->affected_rows()){
-                        # Check if module_content has files or images
-                        preg_match_all('~(?<=href=").*?(?=")|(?<=src=").*?(?=")~', $params["module_content"], $included_links);
-                        
-                        if(count($included_links[FIRST_INDEX])){
-                            $included_links = array_unique($included_links[FIRST_INDEX]);
-                            
+                    if($this->db->affected_rows()){                    
+                        if($included_links){
                             # Fetch Files whose tab_ids contains $params["tab_id"] 
                             $get_files = $this->db->query("SELECT JSON_ARRAYAGG(id) AS file_ids, JSON_ARRAYAGG(file_url) AS file_urls, JSON_ARRAYAGG(tab_ids) AS file_tab_ids FROM files WHERE tab_ids REGEXP ?;", "[[:<:]]{$params["tab_id"]}[[:>:]]");
                             
